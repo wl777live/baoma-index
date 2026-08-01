@@ -17,6 +17,24 @@
 </head>
 <body class="bg-slate-950 text-slate-200 min-h-screen">
 
+<!-- 付费解锁层 -->
+<div id="lockLayer" class="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur flex items-center justify-center p-4">
+  <div class="w-full max-w-sm">
+    <div class="text-center mb-6">
+      <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-400 mb-3 text-xl"><i class="fa fa-line-chart"></i></div>
+      <h1 class="text-2xl font-black tracking-wide">宝妈指数 <span class="text-slate-400 text-sm font-semibold">专业版</span></h1>
+      <p class="text-slate-400 text-sm mt-1">付费解锁 · 全球市场追高情绪监测</p>
+    </div>
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+      <input id="lockInput" type="text" placeholder="输入购买时收到的解锁码" autocomplete="off"
+        class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-center text-lg tracking-widest text-white outline-none focus:border-rose-400 mb-3">
+      <button id="lockBtn" class="w-full bg-rose-500 hover:bg-rose-600 rounded-xl py-3 font-semibold transition">🔓 解锁</button>
+      <p id="lockMsg" class="text-xs text-center mt-3 text-slate-500 h-4"></p>
+    </div>
+    <p class="text-[11px] text-slate-600 text-center mt-4 leading-relaxed">没有解锁码？请联系购买渠道获取<br>⚠️ 娱乐参考，不构成任何投资建议</p>
+  </div>
+</div>
+
 <div class="max-w-6xl mx-auto px-4 py-8">
 
   <!-- 顶部 -->
@@ -106,6 +124,46 @@
 </div>
 
 <script>
+/* ============ 付费解锁（卖家配置区） ============ */
+/* CODES 里是发给买家的解锁码，值 = 每个码在本设备可使用的次数（默认 5）。
+   卖出时按顺序把码发给买家；卖完需要新码，找卖家添加即可。 */
+const CODES = {
+  "BM-ZLB9":5,"BM-105L":5,"BM-KAJC":5,"BM-PDN5":5,"BM-U0K7":5,"BM-0IJB":5,
+  "BM-T71O":5,"BM-IC1Y":5,"BM-B0LG":5,"BM-ORKU":5,"BM-OTZ9":5,"BM-KPQ3":5,
+};
+const LOCK = {
+  tryUnlock(){
+    const code = String(document.getElementById('lockInput').value||'').trim().toUpperCase();
+    const msg = document.getElementById('lockMsg');
+    if(!(code in CODES)){ msg.textContent='解锁码不正确，请检查后重试'; msg.style.color='#f87171'; return; }
+    const used = +(localStorage.getItem('bm_used_'+code)||0);
+    if(used >= CODES[code]){ msg.textContent='该解锁码本机次数已用完'; msg.style.color='#f87171'; return; }
+    localStorage.setItem('bm_used_'+code, used+1);
+    localStorage.setItem('bm_ok_'+code, '1');
+    LOCK.open(code, CODES[code]-used-1);
+  },
+  open(code, left){
+    document.getElementById('lockLayer').style.display='none';
+    if(document.getElementById('unlockBar')) return;
+    const bar = document.createElement('div');
+    bar.id='unlockBar';
+    bar.className='fixed top-0 inset-x-0 z-40 bg-slate-800/95 border-b border-slate-700 text-slate-300 text-xs py-1.5 px-3 text-center';
+    bar.innerHTML='✅ 已解锁 <b>'+code+'</b> · 本机剩余 <b>'+left+'</b> 次';
+    document.body.prepend(bar);
+  },
+};
+(function initLock(){
+  for(const c in CODES){
+    if(localStorage.getItem('bm_ok_'+c)){
+      LOCK.open(c, Math.max(0, CODES[c] - (+(localStorage.getItem('bm_used_'+c)||0))));
+      return;
+    }
+  }
+  document.getElementById('lockBtn').onclick = ()=>LOCK.tryUnlock();
+  document.getElementById('lockInput').addEventListener('keydown', e=>{ if(e.key==='Enter') LOCK.tryUnlock(); });
+  document.getElementById('lockInput').focus();
+})();
+
 /* ============ 资产清单 ============ */
 const MARKETS = [
   { key:'crypto', name:'加密货币', icon:'fa-bitcoin', color:'#f59e0b', assets:[
