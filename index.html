@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>宝妈指数 · 专业版 | 全球市场追高情绪监测</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+<style>
+  body{font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif}
+  .mono{font-variant-numeric:tabular-nums}
+  .bar{transition:width .8s cubic-bezier(.4,0,.2,1)}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .spinner{animation:spin 1s linear infinite}
+  .ring-num{transition:color .4s}
+</style>
+</head>
+<body class="bg-slate-950 text-slate-200 min-h-screen">
+
+<div class="max-w-6xl mx-auto px-4 py-8">
+
+  <!-- 顶部 -->
+  <header class="flex flex-wrap items-end justify-between gap-4 mb-8">
+    <div>
+      <div class="flex items-center gap-2 text-xs text-slate-400 mb-2">
+        <i class="fa fa-line-chart text-rose-400"></i>
+        <span>GLOBAL TRACKER · 散户追高情绪监测</span>
+      </div>
+      <h1 class="text-3xl font-black tracking-wide">宝妈指数 <span class="text-slate-400 text-base font-semibold">专业版</span></h1>
+      <p class="text-slate-400 text-sm mt-1">用真实行情数据量化「该追高还是该冷静」—— 加密货币 / 美股 / 全球股市</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <div id="updateTime" class="text-xs text-slate-500 mono">等待数据...</div>
+      <button id="refreshBtn" onclick="loadAll()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg px-4 py-2 text-sm font-medium transition flex items-center gap-2">
+        <i id="refreshIcon" class="fa fa-refresh"></i> 刷新
+      </button>
+    </div>
+  </header>
+
+  <!-- 全局面板 -->
+  <section class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 mb-6 backdrop-blur">
+    <div class="flex flex-col md:flex-row items-center gap-8">
+      <!-- 大圆环 -->
+      <div class="relative w-40 h-40 shrink-0">
+        <div id="gRing" class="w-full h-full rounded-full" style="background:conic-gradient(#eab308 0deg,#1e293b 0deg);">
+          <div class="absolute inset-3 bg-slate-900 rounded-full flex flex-col items-center justify-center border border-slate-800">
+            <span id="gScore" class="ring-num text-5xl font-black mono">--</span>
+            <span class="text-[10px] text-slate-500 tracking-[.25em] mt-1">宝妈指数</span>
+          </div>
+        </div>
+      </div>
+      <!-- 总评 -->
+      <div class="flex-1 w-full">
+        <div class="flex flex-wrap items-center gap-3">
+          <span id="gLevel" class="text-2xl font-black">评估中</span>
+          <span id="gBadge" class="text-xs font-bold px-3 py-1 rounded-full bg-slate-800 text-slate-300">--</span>
+        </div>
+        <p id="gComment" class="text-slate-400 mt-2 text-sm leading-relaxed">正在拉取全球行情数据...</p>
+        <div class="mt-4 grid grid-cols-3 gap-3 text-center">
+          <div class="bg-slate-800/50 rounded-xl py-3">
+            <div class="text-lg font-bold mono text-amber-400" id="gCrypto">--</div>
+            <div class="text-[11px] text-slate-500 mt-0.5">加密货币</div>
+          </div>
+          <div class="bg-slate-800/50 rounded-xl py-3">
+            <div class="text-lg font-bold mono text-sky-400" id="gUs">--</div>
+            <div class="text-[11px] text-slate-500 mt-0.5">美股市场</div>
+          </div>
+          <div class="bg-slate-800/50 rounded-xl py-3">
+            <div class="text-lg font-bold mono text-emerald-400" id="gGlobal">--</div>
+            <div class="text-[11px] text-slate-500 mt-0.5">全球股市</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 市场卡片 -->
+  <section class="grid md:grid-cols-2 xl:grid-cols-3 gap-5" id="markets"></section>
+
+  <!-- 算法说明 -->
+  <section class="mt-6 bg-slate-900/60 border border-slate-800 rounded-2xl p-6">
+    <h3 class="font-bold text-sm text-slate-300 mb-4 flex items-center gap-2"><i class="fa fa-info-circle text-sky-400"></i> 指数算法说明</h3>
+    <div class="grid sm:grid-cols-3 gap-4 text-xs text-slate-400 leading-relaxed">
+      <div class="bg-slate-800/40 rounded-xl p-4">
+        <p class="font-semibold text-slate-200 mb-1">① 位置分位</p>
+        美股取 52 周区间（权重 65%）；加密取 24h、全球指数取当日区间，其位置分位仅在明显涨幅时放大（最高 40%），避免平淡行情误报过热。
+      </div>
+      <div class="bg-slate-800/40 rounded-xl p-4">
+        <p class="font-semibold text-slate-200 mb-1">② 短期动量</p>
+        当日（加密为 24h）涨跌幅映射为 0-100 分。短期涨幅越大，情绪越亢奋；美股固定权重 35%，短期区间权重随行情动态。
+      </div>
+      <div class="bg-slate-800/40 rounded-xl p-4">
+        <p class="font-semibold text-slate-200 mb-1">③ 加密实时 <span class="text-slate-500">(WebSocket)</span></p>
+        加密行情走 Gate.io WebSocket 实时推送；全球指数来自东方财富，随盘面更新。
+      </div>
+    </div>
+    <p class="text-[11px] text-slate-500 mt-4 leading-relaxed">
+      美股过热分 = 位置分位×65% + 动量×35%；加密/全球指数 = 位置×动态权重 + 动量×余量。分组均分 → 各市场热度；三组均分 → 全局宝妈指数。股票/指数为最近交易日数据，加密为实时数据，仅供参考。
+    </p>
+  </section>
+
+  <footer class="mt-6 text-center text-[11px] text-slate-600 leading-relaxed">
+    <p>数据来源：腾讯行情 (qt.gtimg.cn) · 东方财富 (push2delay.eastmoney.com) · Gate.io WebSocket(实时) &nbsp;|&nbsp; 颜色约定：红涨绿跌</p>
+    <p class="mt-1">⚠️ 本工具仅供研究参考，不构成任何投资建议。股市有风险，追高需谨慎。</p>
+  </footer>
+</div>
+
+<script>
+/* ============ 资产清单 ============ */
+const MARKETS = [
+  { key:'crypto', name:'加密货币', icon:'fa-bitcoin', color:'#f59e0b', assets:[
+    { code:'BTC_USDT', name:'比特币' },
+    { code:'ETH_USDT', name:'以太坊' },
+    { code:'SOL_USDT', name:'Solana' },
+  ]},
+  { key:'us', name:'美股市场', icon:'fa-line-chart', color:'#38bdf8', assets:[
+    { code:'usINX',   name:'标普500' },
+    { code:'usIXIC',  name:'纳斯达克' },
+    { code:'usDJI',   name:'道琼斯' },
+    { code:'usNVDA',  name:'英伟达' },
+    { code:'usTSLA',  name:'特斯拉' },
+    { code:'usAAPL',  name:'苹果' },
+  ]},
+  { key:'global', name:'全球市场', icon:'fa-globe', color:'#34d399', assets:[
+    { code:'100.N225',  name:'日经225' },
+    { code:'100.KS11',  name:'韩国KOSPI' },
+    { code:'100.GDAXI', name:'德国DAX30' },
+    { code:'100.FTSE',  name:'英国富时100' },
+    { code:'100.FCHI',  name:'法国CAC40' },
+    { code:'100.HSI',   name:'恒生指数' },
+    { code:'1.000001',  name:'上证指数' },
+  ]},
+];
+
+const LEVELS = [
+  { min:0,  name:'低温 · 冷静区',   emoji:'❄️', color:'#22c55e', tip:'市场情绪偏冷,追高动能不足,多属价值布局区。' },
+  { min:30, name:'温和 · 谨慎乐观', emoji:'🌤️', color:'#eab308', tip:'情绪温和,局部存在机会,但不宜盲目追高。' },
+  { min:55, name:'偏热 · 情绪升温', emoji:'🔥', color:'#f97316', tip:'追高情绪明显升温,多资产接近阶段高位,注意控制仓位。' },
+  { min:75, name:'过热 · 追高危险', emoji:'🚨', color:'#ef4444', tip:'全球追高情绪亢奋,多资产位于高位区,警惕回调风险。' },
+];
+const level = s => LEVELS.filter(l=>s>=l.min).pop();
+const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+
+/* 数据收集：code -> {price,chg,hi,lo,ts} */
+const store = {};
+const codeOK = new Set();
+
+async function jfetch(url, ms=12000){
+  const ctl = new AbortController();
+  const t = setTimeout(()=>ctl.abort(), ms);
+  try{ return await fetch(url, {signal:ctl.signal}); }
+  finally{ clearTimeout(t); }
+}
+
+function parseTencent(text){
+  const re = /v_(\w+)="([^"]*)"/g, out = {};
+  let m;
+  while((m=re.exec(text))){
+    const f = m[2].split('~');
+    if(f.length < 35) continue;
+    out[m[1]] = {
+      name: f[1], price: parseFloat(f[3]), chg: parseFloat(f[32]),
+      hi52: parseFloat(f[48])||0, lo52: parseFloat(f[49])||0,
+      ts: f[30],
+    };
+  }
+  return out;
+}
+
+async function loadCN(){
+  const us = MARKETS.find(m=>m.key==='us');
+  const res = await jfetch('https://qt.gtimg.cn/q='+us.assets.map(a=>a.code).join(','));
+  const buf = await res.arrayBuffer();
+  let text;
+  try{ text = new TextDecoder('gbk').decode(buf); }catch(e){ text = new TextDecoder().decode(buf); }
+  const q = parseTencent(text);
+  for(const a of us.assets){
+    const d = q[a.code];
+    if(!d || !isFinite(d.price)) continue;
+    store[a.code] = { price:d.price, chg:d.chg, hi:d.hi52, lo:d.lo52, ts:d.ts, period:'52w' };
+    codeOK.add(a.code);
+  }
+}
+
+async function loadGlobal(){
+  const mk = MARKETS.find(m=>m.key==='global');
+  const qs = 'secids='+mk.assets.map(a=>a.code).join(',')+'&fields=f2,f3,f12,f14,f15,f16&fltt=2&ut=fa5fd1943c7b386f172d6893dbfba10b';
+  let j = null;
+  for(const host of ['push2delay.eastmoney.com','push2.eastmoney.com']){
+    try{
+      const res = await jfetch('https://'+host+'/api/qt/ulist.np/get?'+qs);
+      if(!res.ok) continue;
+      j = await res.json();
+      if(j && j.data && Array.isArray(j.data.diff) && j.data.diff.length) break;
+    }catch(e){}
+  }
+  const diff = j && j.data && Array.isArray(j.data.diff) ? j.data.diff : [];
+  const byCode = {};
+  for(const it of diff) if(it && it.f12) byCode[String(it.f12)] = it;
+  for(const a of mk.assets){
+    const it = byCode[a.code.split('.')[1]];
+    if(!it) continue;
+    const price = it.f2;
+    if(!isFinite(price)) continue;
+    store[a.code] = { price, chg: isFinite(it.f3)?it.f3:0, hi: isFinite(it.f15)?it.f15:0, lo: isFinite(it.f16)?it.f16:0, ts:'', period:'day' };
+    codeOK.add(a.code);
+  }
+}
+
+let wsGate=null;
+function connectGateWS(){
+  if(wsGate && wsGate.readyState<=1) return;
+  try{ wsGate = new WebSocket('wss://api.gateio.ws/ws/v4/'); }catch(e){ return; }
+  wsGate.onopen = ()=>{
+    wsGate.send(JSON.stringify({
+      time: Math.floor(Date.now()/1000),
+      channel: 'spot.tickers',
+      event: 'subscribe',
+      payload: MARKETS.find(m=>m.key==='crypto').assets.map(a=>a.code),
+    }));
+  };
+  wsGate.onmessage = e=>{
+    let msg;
+    try{ msg = JSON.parse(e.data); }catch(err){ return; }
+    if(msg.event==='update' && msg.result){
+      const list = Array.isArray(msg.result) ? msg.result : [msg.result];
+      let changed=false;
+      for(const t of list){
+        const price = parseFloat(t.last), hi = parseFloat(t.high_24h), lo = parseFloat(t.low_24h);
+        if(!isFinite(price)) continue;
+        store[t.currency_pair] = {
+          price, chg: parseFloat(t.change_percentage)||0, hi, lo,
+          ts: new Date().toLocaleTimeString('zh-CN',{hour12:false}),
+          period:'24h',
+        };
+        codeOK.add(t.currency_pair);
+        changed=true;
+      }
+      if(changed) scheduleRender();
+    }
+  };
+  wsGate.onerror = ()=>{};
+  wsGate.onclose = ()=>{ wsGate=null; setTimeout(connectGateWS, 5000); };
+}
+
+/* ============ 评分 ============ */
+function heatScore(d){
+  const chg = isFinite(d.chg)?d.chg:0;
+  const mom = clamp(50 + chg*10, 0, 100);
+  let pos=50;
+  if(d.hi>d.lo && d.hi>0) pos = clamp((d.price-d.lo)/(d.hi-d.lo)*100, 0, 100);
+  let score;
+  if(d.period==='52w'){
+    score = Math.round(pos*0.65 + mom*0.35);
+  }else{
+    // 当日/24h 区间：位置分位仅在明显涨幅时放大，避免平淡行情误报过热
+    const wp = clamp(Math.abs(chg)/2, 0, 0.4);
+    score = Math.round(pos*wp + mom*(1-wp));
+  }
+  return { score, pos, mom };
+}
+
+/* ============ 渲染 ============ */
+let rTimer=null;
+function scheduleRender(){ if(rTimer) return; rTimer=setTimeout(()=>{ rTimer=null; render(); }, 1200); }
+const fmt = (v, d=2)=> isFinite(v) ? v.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}) : '--';
+const fmtPct = v => isFinite(v) ? (v>=0?'+':'')+v.toFixed(2)+'%' : '--';
+const colorOf = c => c>=0 ? '#f43f5e' : '#10b981';
+
+function render(){
+  const out = [];
+  const groups = [];
+  for(const m of MARKETS){
+    const rows = m.assets.map(a=>{
+      const d = store[a.code];
+      if(!d){ return {name:a.name, err:true}; }
+      const h = heatScore(d);
+      const distHi = d.hi>0 ? Math.max(0,(d.hi-d.price)/d.hi*100) : null;
+      return { name:a.name, code:a.code, price:d.price, chg:d.chg, score:h.score, pos:h.pos, distHi, err:false };
+    });
+    const scores = rows.filter(r=>!r.err).map(r=>r.score);
+    const avg = scores.length ? Math.round(scores.reduce((s,v)=>s+v,0)/scores.length) : null;
+    const lv = avg==null ? null : level(avg);
+    groups.push({ key:m.key, avg, lv });
+    out.push({ m, rows, avg, lv });
+  }
+
+  const validGroups = groups.filter(g=>g.avg!=null);
+  const gAvg = validGroups.length ? Math.round(validGroups.reduce((s,g)=>s+g.avg,0)/validGroups.length) : null;
+  const gScore = document.getElementById('gScore');
+  const gLevelEl = document.getElementById('gLevel');
+  if(gAvg==null){
+    gScore.textContent='--'; gScore.style.color='#64748b';
+    document.getElementById('gRing').style.background='conic-gradient(#334155 0deg,#1e293b 0deg)';
+    gLevelEl.textContent='❄️ 暂无数据'; gLevelEl.style.color='#64748b';
+    document.getElementById('gBadge').textContent='--';
+    document.getElementById('gComment').textContent='⚠️ 行情数据获取失败，请检查网络后点击「刷新」重试。';
+  }else{
+    const gLv = level(gAvg);
+    gScore.textContent = gAvg;
+    gScore.style.color = gLv.color;
+    document.getElementById('gRing').style.background = `conic-gradient(${gLv.color} ${gAvg*3.6}deg,#1e293b 0deg)`;
+    gLevelEl.textContent = gLv.emoji + ' ' + gLv.name;
+    gLevelEl.style.color = gLv.color;
+    document.getElementById('gBadge').textContent = '全球' + (gAvg>=55?'追高':'情绪') + (gAvg>=75?'警报':gAvg>=55?'升温':'平稳') + ' · ' + gAvg;
+    document.getElementById('gComment').textContent = gLv.tip;
+  }
+  for(const g of groups){
+    const el = g.key==='crypto'?document.getElementById('gCrypto')
+              : g.key==='us'?document.getElementById('gUs')
+              : document.getElementById('gGlobal');
+    el.textContent = g.avg==null?'--':g.avg;
+    el.style.color = g.lv?g.lv.color:'';
+  }
+
+  const box = document.getElementById('markets');
+  box.innerHTML = out.map(({m, rows, avg, lv})=>`
+    <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-2.5">
+          <span class="w-9 h-9 rounded-xl flex items-center justify-center" style="background:${m.color}22;color:${m.color}"><i class="fa ${m.icon}"></i></span>
+          <div>
+            <div class="font-bold">${m.name}</div>
+            <div class="text-[11px] text-slate-500">${m.assets.length} 个标的</div>
+          </div>
+        </div>
+        <div class="text-right">
+          <div class="font-black text-xl mono" style="color:${lv?lv.color:'#64748b'}">${avg==null?'--':avg}</div>
+          <div class="text-[11px]" style="color:${lv?lv.color:'#64748b'}">${lv?lv.name:'--'}</div>
+        </div>
+      </div>
+      <div class="space-y-2">
+        ${rows.map(r=>r.err?`
+          <div class="flex items-center justify-between bg-slate-800/40 rounded-xl px-3 py-2.5">
+            <span class="text-sm">${r.name}</span>
+            <span class="text-xs text-slate-500">数据获取失败</span>
+          </div>`:`
+          <div class="flex items-center gap-3 bg-slate-800/40 rounded-xl px-3 py-2.5">
+            <span class="w-24 shrink-0 text-sm font-medium text-slate-200 truncate">${r.name}</span>
+            <span class="mono text-sm w-24 text-right shrink-0">${fmt(r.price)}</span>
+            <div class="w-16 shrink-0 text-right">
+              <div class="mono text-xs" style="color:${colorOf(r.chg)}">${fmtPct(r.chg)}</div>
+              <div class="text-[10px] text-slate-500">${r.distHi!=null?'距顶 '+r.distHi.toFixed(0)+'%':'--'}</div>
+            </div>
+            <div class="flex-1 flex items-center gap-2 min-w-0">
+              <div class="flex-1 h-1.5 rounded-full bg-slate-700/60 overflow-hidden">
+                <div class="bar h-full rounded-full" style="width:${r.score}%;background:${level(r.score).color}"></div>
+              </div>
+              <span class="mono text-xs w-7 text-right shrink-0 font-bold" style="color:${level(r.score).color}">${r.score}</span>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`).join('');
+
+  // 时间
+  const live = Object.values(store).some(d=>/^\d\d:\d\d/.test(d.ts||''));
+  const t = live ? new Date().toLocaleTimeString('zh-CN',{hour12:false}) + ' · 加密实时' : Object.values(store).map(d=>d.ts).filter(Boolean).sort().pop();
+  document.getElementById('updateTime').textContent = '更新于 ' + (t || '快照');
+}
+
+/* ============ 主流程 ============ */
+let loaded=false;
+async function loadAll(){
+  const icon = document.getElementById('refreshIcon');
+  icon.className = 'fa fa-refresh spinner';
+  try{
+    await Promise.allSettled([loadCN(), loadGlobal()]);
+    connectGateWS();
+    if(codeOK.size){
+      render();
+      icon.className = 'fa fa-refresh';
+      if(!loaded){
+        loaded=true;
+        setInterval(loadAll, 90000);
+      }
+    }else{
+      document.getElementById('gComment').textContent = '⚠️ 行情数据拉取失败，请检查网络后点击「刷新」重试。';
+      icon.className = 'fa fa-refresh';
+    }
+  }catch(e){
+    document.getElementById('gComment').textContent = '⚠️ 数据加载出错：'+e.message;
+    icon.className = 'fa fa-refresh';
+  }
+}
+loadAll();
+</script>
+</body>
+</html>
