@@ -352,7 +352,6 @@ function toTcCode(input){
   if(/^(SH|SZ)\d{6}$/.test(s)) return s.toLowerCase();
   if(/^US[A-Z0-9]+$/.test(s)) return s.toLowerCase();
   if(/^\d{6}$/.test(s)) return s[0]==='6' ? 'sh'+s : 'sz'+s;
-  if(/^[A-Z]{1,6}(\.[A-Z]{1,3})?$/.test(s)) return 'us'+s;
   if(/^[一-龥]{2,6}$/.test(s)){
     const sym = CN_US[s];
     return sym ? 'us'+sym : null;
@@ -422,13 +421,16 @@ async function queryStock(){
       list = [{ code: direct, name: raw, kind: /^(sh|sz|bj)/.test(direct)?'A股':'美股' }];
     }else{
       list = await smartSearch(raw);
+      if(!list.length && /^[A-Za-z]{1,6}(\.[A-Za-z]{1,3})?$/.test(raw)){
+        list = [{ code: 'us'+raw.toUpperCase(), name: raw, kind: '美股' }];
+      }
     }
   }catch(e){
     box.innerHTML = '<p class="text-rose-400 text-xs">搜索失败，请检查网络后重试</p>';
     return;
   }
   if(!list.length){
-    box.innerHTML = '<p class="text-rose-400 text-xs">没有找到「'+esc(raw)+'」，试试输入股票代码，例如 600519 / AAPL</p>';
+    box.innerHTML = '<p class="text-rose-400 text-xs">没有找到「'+esc(raw)+'」，试试输入中文名或股票代码</p>';
     return;
   }
   if(list.length === 1){ doQuery(list[0].code, list[0].name); return; }
