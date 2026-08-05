@@ -55,6 +55,21 @@
     </div>
   </header>
 
+  <!-- 个股查询 -->
+  <section class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 mb-6 backdrop-blur">
+    <div class="flex flex-wrap items-center gap-3">
+      <div class="flex items-center gap-2">
+        <i class="fa fa-search text-sky-400"></i>
+        <span class="font-bold">个股热度查询</span>
+      </div>
+      <input id="stockInput" type="text" placeholder="输入代码或名称：600519 / 苹果 / AAPL" autocomplete="off"
+        class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm w-64 outline-none focus:border-sky-400">
+      <button id="stockBtn" class="bg-sky-500 hover:bg-sky-600 rounded-lg px-4 py-2 text-sm font-medium transition">查询</button>
+      <span class="text-[11px] text-slate-500">A股输数字，美股输中文名或英文代码</span>
+    </div>
+    <div id="stockResult" class="hidden mt-4"></div>
+  </section>
+
   <!-- 全局面板 -->
   <section class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 mb-6 backdrop-blur">
     <div class="flex flex-col md:flex-row items-center gap-8">
@@ -216,9 +231,13 @@ function parseTencent(text){
   while((m=re.exec(text))){
     const f = m[2].split('~');
     if(f.length < 35) continue;
-    out[m[1]] = {
+    const code = m[1];
+    const isA = /^(sh|sz)\d{6}$/i.test(code);
+    out[code] = {
       name: f[1], price: parseFloat(f[3]), chg: parseFloat(f[32]),
-      hi52: parseFloat(f[48])||0, lo52: parseFloat(f[49])||0,
+      hi52: isA ? 0 : (parseFloat(f[48])||0),
+      lo52: isA ? 0 : (parseFloat(f[49])||0),
+      turnover: isA ? (parseFloat(f[38])||0) : null,
       ts: f[30],
     };
   }
@@ -316,6 +335,185 @@ function heatScore(d){
     score = Math.round(pos*wp + mom*(1-wp));
   }
   return { score, pos, mom };
+}
+
+/* ============ 个股热度查询 ============ */
+const CN_US = {
+  '苹果':'AAPL','特斯拉':'TSLA','英伟达':'NVDA','谷歌':'GOOGL','微软':'MSFT',
+  '亚马逊':'AMZN','Meta':'META','脸书':'META','元宇宙':'META','阿里巴巴':'BABA',
+  '阿里':'BABA','京东':'JD','拼多多':'PDD','百度':'BIDU','网易':'NTES',
+  '哔哩哔哩':'BILI','B站':'BILI','爱奇艺':'IQ','蔚来':'NIO','理想':'LI',
+  '小鹏':'XPEV','台积电':'TSM','英特尔':'INTC','美光':'MU','高通':'QCOM',
+  '可口可乐':'KO','麦当劳':'MCD','星巴克':'SBUX','耐克':'NKE','迪士尼':'DIS',
+  '波音':'BA','沃尔玛':'WMT','花旗':'C','高盛':'GS','伯克希尔':'BRK.B',
+};
+function toTcCode(input){
+  let s = String(input||'').trim().toUpperCase();
+  if(/^(SH|SZ)\d{6}$/.test(s)) return s.toLowerCase();
+  if(/^US[A-Z0-9]+$/.test(s)) return s.toLowerCase();
+  if(/^\d{6}$/.test(s)) return s[0]==='6' ? 'sh'+s : 'sz'+s;
+  if(/^[A-Z]{1,6}(\.[A-Z]{1,3})?$/.test(s)) return 'us'+s;
+  if(/^[一-龥]{2,6}$/.test(s)){
+    const sym = CN_US[s];
+    return sym ? 'us'+sym : null;
+  }
+  return null;
+}
+function stockHeat(d, isA){
+  const chg = isFinite(d.chg)?d.chg:0;
+  const mom = clamp(50 + chg*8, 0, 100);
+  let pos = 50;
+  if(d.hi52>d.lo52 && d.hi52>0) pos = clamp((d.price-d.lo52)/(d.hi52-d.lo52)*100, 0, 100);
+  let score;
+  if(isA){
+    const turn = isFinite(d.turnover)?d.turnover:0;
+    score = Math.round(mom*0.62 + pos*0.2 + clamp(turn*4, 0, 18));
+  }else{
+    score = Math.round(mom*0.65 + pos*0.35);
+  }
+  return clamp(score, 0, 100);
+}
+function renderStock(d, code){
+  const isA = /^(sh|sz)\d{6}$/i.test(code);
+  const h = stockHeat(d, isA);
+  const lv = level(h);
+  const box = document.getElementById('stockResult');
+  box.innerHTML = `
+    <div class="bg-slate-800/40 rounded-xl p-4">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-lg">${d.name}</span>
+            <span class="text-xs text-slate-500 mono">${code.toUpperCase()}</span>
+            <span class="text-[10px] px-2 py-0.5 rounded-full ${isA?'bg-emerald-500/10 text-emerald-400':'bg-sky-500/10 text-sky-400'}">${isA?'A股':'美股'}</span>
+          </div>
+          <div class="mt-1 flex items-center gap-3">
+            <span class="mono text-lg font-bold">${fmt(d.price)}</span>
+            <span class="mono text-sm" style="color:${colorOf(d.chg)}">${fmtPct(d.chg)}</span>
+            ${isA?'<span class="text-xs text-slate-500">换手 '+fmt(d.turnover)+'%</span>':''}
+          </div>
+        </div>
+        <div class="text-center">
+          <div class="text-3xl font-black mono" style="color:${lv.color}">${h}</div>
+          <div class="text-[11px] text-slate-500 mt-0.5">${lv.name}</div>
+        </div>
+      </div>
+      <div class="mt-3 h-2 rounded-full bg-slate-700/60 overflow-hidden">
+        <div class="bar h-full rounded-full" style="width:${h}%;background:${lv.color}"></div>
+      </div>
+      <p class="mt-3 text-xs text-slate-400 leading-relaxed">${lv.emoji} ${lv.tip}</p>
+      <p class="mt-2 text-[10px] text-slate-600">⚠️ 娱乐参考，不构成任何投资建议 · 数据 ${d.ts||''}</p>
+    </div>`;
+}
+async function queryStock(){
+  const box = document.getElementById('stockResult');
+  const inp = document.getElementById('stockInput');
+  const raw = String(inp.value||'').trim();
+  box.classList.remove('hidden');
+  if(!raw){
+    box.innerHTML = '<p class="text-rose-400 text-xs">请输入要查询的股票名称或代码</p>';
+    return;
+  }
+  box.innerHTML = '<p class="text-slate-400 text-xs"><i class="fa fa-spinner spinner"></i> 正在搜索 '+esc(raw)+' ...</p>';
+  let list;
+  try{
+    const direct = toTcCode(raw);
+    if(direct){
+      list = [{ code: direct, name: raw, kind: /^(sh|sz|bj)/.test(direct)?'A股':'美股' }];
+    }else{
+      list = await smartSearch(raw);
+    }
+  }catch(e){
+    box.innerHTML = '<p class="text-rose-400 text-xs">搜索失败，请检查网络后重试</p>';
+    return;
+  }
+  if(!list.length){
+    box.innerHTML = '<p class="text-rose-400 text-xs">没有找到「'+esc(raw)+'」，试试输入股票代码，例如 600519 / AAPL</p>';
+    return;
+  }
+  if(list.length === 1){ doQuery(list[0].code, list[0].name); return; }
+  renderCandidates(list);
+}
+function smartSearch(q){
+  return new Promise((resolve, reject)=>{
+    const sc = document.createElement('script');
+    sc.src = 'https://smartbox.gtimg.cn/s3/?v=2&q='+encodeURIComponent(q)+'&t=all';
+    const done = ok=>{
+      clearTimeout(sc._t);
+      sc.remove();
+      if(ok){
+        const raw = window.v_hint || '';
+        delete window.v_hint;
+        resolve(parseSb(raw));
+      }else{
+        delete window.v_hint;
+        reject(new Error('search fail'));
+      }
+    };
+    sc._t = setTimeout(()=>done(false), 10000);
+    sc.onload = ()=>done(true);
+    sc.onerror = ()=>done(false);
+    document.head.appendChild(sc);
+  });
+}
+function parseSb(raw){
+  let s = String(raw||'').trim();
+  s = s.replace(/^v_hint="?/, '').replace(/"?\s*;?\s*$/, '');
+  const out = [], seen = new Set();
+  for(const seg of s.split('^')){
+    const f = seg.split('~');
+    if(f.length < 5) continue;
+    const [mkt, code, name, py, type] = f;
+    if(type === 'QZ' || type === 'ZS') continue;
+    let tc = null, kind = '';
+    if(/^(sh|sz|bj)$/.test(mkt) && /^\d{6}$/.test(code)){ tc = mkt + code; kind = mkt==='bj' ? '北交所' : 'A股'; }
+    else if(mkt === 'us' && /^[a-z0-9.\-]+\.(oq|n|am|as|rs)$/.test(code)){ tc = 'us'+code.replace(/\.[a-z0-9]+$/,'').toUpperCase(); kind = '美股'; }
+    else if(mkt === 'hk' && /^\d{5}$/.test(code)){ tc = 'hk'+code; kind = '港股'; }
+    if(!tc || seen.has(tc)) continue;
+    seen.add(tc);
+    out.push({ code: tc, name, kind });
+    if(out.length >= 12) break;
+  }
+  return out;
+}
+function renderCandidates(list){
+  const box = document.getElementById('stockResult');
+  const kindBadge = k => k==='美股' ? 'bg-sky-500/10 text-sky-400'
+    : k==='港股' ? 'bg-purple-500/10 text-purple-400'
+    : k==='北交所' ? 'bg-amber-500/10 text-amber-400'
+    : 'bg-emerald-500/10 text-emerald-400';
+  box.innerHTML = '<p class="text-xs text-slate-400 mb-3">找到 '+list.length+' 个匹配，点击选择：</p>'
+    + '<div class="flex flex-wrap gap-2">'
+    + list.map((c,i)=>'<button data-i="'+i+'" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg px-3 py-2 text-sm text-left transition">'
+      + '<span class="font-medium">'+esc(c.name)+'</span>'
+      + '<span class="ml-2 text-[10px] text-slate-500 mono">'+esc(c.code.toUpperCase())+'</span>'
+      + '<span class="ml-1 text-[10px] px-1.5 py-0.5 rounded '+kindBadge(c.kind)+'">'+c.kind+'</span>'
+      + '</button>').join('') + '</div>';
+  box.querySelectorAll('button[data-i]').forEach(btn=>{
+    btn.onclick = ()=> doQuery(list[+btn.dataset.i].code, list[+btn.dataset.i].name);
+  });
+}
+async function doQuery(code, label){
+  const box = document.getElementById('stockResult');
+  box.innerHTML = '<p class="text-slate-400 text-xs"><i class="fa fa-spinner spinner"></i> 正在查询 '+esc(label||code)+' ...</p>';
+  try{
+    const res = await jfetch('https://qt.gtimg.cn/q='+code, 8000);
+    const buf = await res.arrayBuffer();
+    let text;
+    try{ text = new TextDecoder('gbk').decode(buf); }catch(e){ text = new TextDecoder().decode(buf); }
+    const q = parseTencent(text);
+    const d = q[code];
+    if(!d || !isFinite(d.price)){
+      box.innerHTML = '<p class="text-rose-400 text-xs">未查询到该代码，请检查后重试</p>';
+      return;
+    }
+    renderStock(d, code);
+  }catch(e){
+    box.innerHTML = '<p class="text-rose-400 text-xs">查询失败，请检查网络后重试</p>';
+  }
+}
+function esc(s){
+  return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
 /* ============ 渲染 ============ */
@@ -441,6 +639,10 @@ async function loadAll(){
   }
 }
 loadAll();
+
+/* 个股查询事件 */
+document.getElementById('stockBtn').onclick = queryStock;
+document.getElementById('stockInput').addEventListener('keydown', e=>{ if(e.key==='Enter') queryStock(); });
 </script>
 </body>
 </html>
