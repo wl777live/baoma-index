@@ -16,38 +16,81 @@
 
   /* ===== 主题色板：默认跟随系统，手动选择时由 data-theme 覆盖 ===== */
   :root{
-    --bg:#f1f5f9; --card:#ffffff; --card-border:#e2e8f0;
-    --row:#f1f5f9; --track:#e2e8f0; --input:#ffffff; --btn:#f1f5f9; --btn-hover:#e2e8f0;
-    --text:#0f172a; --text2:#475569; --text3:#94a3b8; --ring-core:#ffffff; --overlay:rgba(241,245,249,.95);
+    --bg:#eef2f7; --card:rgba(255,255,255,.82); --card-border:rgba(15,23,42,.09);
+    --row:rgba(255,255,255,.62); --track:#e2e8f0; --input:#ffffff; --btn:#f1f5f9; --btn-hover:#e2e8f0;
+    --text:#0f172a; --text2:#475569; --text3:#94a3b8; --ring-core:rgba(255,255,255,.92); --overlay:rgba(241,245,249,.92);
+    --glowA:rgba(56,189,248,.08); --glowB:rgba(168,85,247,.06); --glowC:rgba(244,63,94,.05);
+    --shadow:0 16px 46px -16px rgba(15,23,42,.16);
   }
   @media (prefers-color-scheme: dark){
     :root{
-      --bg:#020617; --card:rgba(15,23,42,.8); --card-border:#1e293b;
-      --row:rgba(30,41,59,.4); --track:rgba(51,65,85,.6); --input:#1e293b; --btn:#1e293b; --btn-hover:#0f172a;
-      --text:#e2e8f0; --text2:#94a3b8; --text3:#64748b; --ring-core:#0f172a; --overlay:rgba(2,6,23,.95);
+      --bg:#020617; --card:rgba(13,19,36,.66); --card-border:rgba(148,163,184,.14);
+      --row:rgba(148,163,184,.09); --track:rgba(148,163,184,.15); --input:rgba(148,163,184,.10); --btn:rgba(148,163,184,.10); --btn-hover:rgba(148,163,184,.18);
+      --text:#e6edf7; --text2:#94a3b8; --text3:#64748b; --ring-core:rgba(10,15,29,.92); --overlay:rgba(2,6,23,.92);
+      --glowA:rgba(56,189,248,.14); --glowB:rgba(168,85,247,.12); --glowC:rgba(244,63,94,.08);
+      --shadow:0 22px 64px -20px rgba(0,0,0,.68);
     }
   }
   :root[data-theme="light"]{
-    --bg:#f1f5f9; --card:#ffffff; --card-border:#e2e8f0;
-    --row:#f1f5f9; --track:#e2e8f0; --input:#ffffff; --btn:#f1f5f9; --btn-hover:#e2e8f0;
-    --text:#0f172a; --text2:#475569; --text3:#94a3b8; --ring-core:#ffffff; --overlay:rgba(241,245,249,.95);
+    --bg:#eef2f7; --card:rgba(255,255,255,.82); --card-border:rgba(15,23,42,.09);
+    --row:rgba(255,255,255,.62); --track:#e2e8f0; --input:#ffffff; --btn:#f1f5f9; --btn-hover:#e2e8f0;
+    --text:#0f172a; --text2:#475569; --text3:#94a3b8; --ring-core:rgba(255,255,255,.92); --overlay:rgba(241,245,249,.92);
+    --glowA:rgba(56,189,248,.08); --glowB:rgba(168,85,247,.06); --glowC:rgba(244,63,94,.05);
+    --shadow:0 16px 46px -16px rgba(15,23,42,.16);
   }
   :root[data-theme="dark"]{
-    --bg:#020617; --card:rgba(15,23,42,.8); --card-border:#1e293b;
-    --row:rgba(30,41,59,.4); --track:rgba(51,65,85,.6); --input:#1e293b; --btn:#1e293b; --btn-hover:#0f172a;
-    --text:#e2e8f0; --text2:#94a3b8; --text3:#64748b; --ring-core:#0f172a; --overlay:rgba(2,6,23,.95);
+    --bg:#020617; --card:rgba(13,19,36,.66); --card-border:rgba(148,163,184,.14);
+    --row:rgba(148,163,184,.09); --track:rgba(148,163,184,.15); --input:rgba(148,163,184,.10); --btn:rgba(148,163,184,.10); --btn-hover:rgba(148,163,184,.18);
+    --text:#e6edf7; --text2:#94a3b8; --text3:#64748b; --ring-core:rgba(10,15,29,.92); --overlay:rgba(2,6,23,.92);
+    --glowA:rgba(56,189,248,.14); --glowB:rgba(168,85,247,.12); --glowC:rgba(244,63,94,.08);
+    --shadow:0 22px 64px -20px rgba(0,0,0,.68);
   }
-  body{background:var(--bg);color:var(--text);transition:background-color .3s,color .3s}
-  .card{background:var(--card);border-color:var(--card-border)}
-  .row{background:var(--row)}
+
+  /* 高级感：多层彩色光晕背景 */
+  body{
+    background:
+      radial-gradient(1100px 560px at 88% -12%, var(--glowA), transparent 62%),
+      radial-gradient(920px 480px at -8% 10%, var(--glowB), transparent 60%),
+      radial-gradient(840px 520px at 50% 114%, var(--glowC), transparent 62%),
+      var(--bg);
+    color:var(--text);
+    transition:background-color .3s,color .3s;
+  }
+  /* 玻璃卡片：半透明 + 磨砂 + 顶部高光 + 柔和阴影 */
+  .card{
+    position:relative;
+    background:var(--card);
+    border-color:var(--card-border);
+    box-shadow:var(--shadow), inset 0 1px 0 rgba(255,255,255,.06);
+    backdrop-filter:blur(16px) saturate(1.2);
+    -webkit-backdrop-filter:blur(16px) saturate(1.2);
+  }
+  .card::before{
+    content:''; position:absolute; top:0; left:12%; right:12%; height:1px;
+    background:linear-gradient(90deg, transparent, rgba(255,255,255,.3), transparent);
+    pointer-events:none;
+  }
+  .row{background:var(--row); transition:transform .3s,background-color .3s,box-shadow .3s}
+  .row:hover{transform:translateY(-1px); box-shadow:0 6px 18px -6px rgba(0,0,0,.25)}
   .inp{background:var(--input);border-color:var(--card-border);color:var(--text)}
   .btn{background:var(--btn);border-color:var(--card-border);color:var(--text)}
   .btn:hover{background:var(--btn-hover)}
   .track{background:var(--track)}
   .t1{color:var(--text)} .t2{color:var(--text2)} .t3{color:var(--text3)}
-  .ring-core{background:var(--ring-core)}
+  .ring-core{background:var(--ring-core); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px)}
   .card,.inp,.btn{transition:background-color .3s,color .3s,border-color .3s}
   .overlay{background:var(--overlay)}
+
+  /* 数字/圆环发光 */
+  .glow-num{text-shadow:0 0 22px rgba(255,255,255,.18)}
+  .g-ring{box-shadow:0 0 36px -8px rgba(56,189,248,.42), 0 0 90px -20px rgba(168,85,247,.26)}
+  .mini-ring{box-shadow:0 0 12px -2px currentColor}
+  .stat{position:relative; overflow:hidden}
+  .stat::after{content:''; position:absolute; top:0; left:0; right:0; height:42%; background:linear-gradient(180deg, rgba(255,255,255,.09), transparent); pointer-events:none}
+
+  /* 入场动画（静态区，一次性，不卡顿） */
+  @keyframes rise{from{opacity:0; transform:translateY(16px)} to{opacity:1; transform:none}}
+  .rise{animation:rise .55s cubic-bezier(.2,.7,.3,1) both}
 
   /* ===== 横滑区 ===== */
   .noscroll{scrollbar-width:none;-ms-overflow-style:none}
@@ -80,9 +123,9 @@
   <!-- 顶部 -->
   <header class="flex flex-wrap items-end justify-between gap-4 mb-8">
     <div>
-      <div class="flex items-center gap-2 text-xs t2 mb-2">
-        <i class="fa fa-line-chart text-rose-400"></i>
-        <span>GLOBAL TRACKER · 散户追高情绪监测</span>
+      <div class="flex items-center gap-2.5 text-xs t2 mb-2">
+        <span class="w-7 h-7 rounded-lg bg-gradient-to-br from-rose-500/30 via-amber-500/15 to-sky-500/30 flex items-center justify-center text-rose-300 shadow-lg shadow-rose-500/15"><i class="fa fa-line-chart text-xs"></i></span>
+        <span class="tracking-[.18em]">GLOBAL TRACKER · 散户追高情绪监测</span>
       </div>
       <h1 class="text-3xl font-black tracking-wide">宝妈指数 <span class="t3 text-base font-semibold">专业版</span></h1>
       <p class="t2 text-sm mt-1">用真实行情数据量化「该追高还是该冷静」—— 加密货币 / 美股 / 全球股市</p>
@@ -97,7 +140,7 @@
   </header>
 
   <!-- 个股查询 -->
-  <section id="stockQuery" class="card border rounded-2xl p-5 mb-6 backdrop-blur">
+  <section id="stockQuery" class="rise card border rounded-2xl p-5 mb-6 backdrop-blur">
     <div class="flex flex-wrap items-center gap-3">
       <div class="flex items-center gap-2">
         <i class="fa fa-search text-sky-400"></i>
@@ -112,13 +155,13 @@
   </section>
 
   <!-- 全局面板 -->
-  <section class="card border rounded-2xl p-6 mb-6 backdrop-blur">
+  <section class="rise card border rounded-2xl p-6 mb-6 backdrop-blur" style="animation-delay:60ms">
     <div class="flex flex-col md:flex-row items-center gap-8">
       <!-- 大圆环 -->
       <div class="relative w-40 h-40 shrink-0">
-        <div id="gRing" class="w-full h-full rounded-full" style="background:conic-gradient(#eab308 0deg,#1e293b 0deg);">
+        <div id="gRing" class="g-ring w-full h-full rounded-full" style="background:conic-gradient(#eab308 0deg,#1e293b 0deg);">
           <div class="ring-core absolute inset-3 rounded-full flex flex-col items-center justify-center border" style="border-color:var(--card-border)">
-            <span id="gScore" class="ring-num text-5xl font-black mono">--</span>
+            <span id="gScore" class="ring-num glow-num text-5xl font-black mono">--</span>
             <span class="text-[10px] t3 tracking-[.25em] mt-1">宝妈指数</span>
           </div>
         </div>
@@ -131,15 +174,15 @@
         </div>
         <p id="gComment" class="t2 mt-2 text-sm leading-relaxed">正在拉取全球行情数据...</p>
         <div class="mt-4 grid grid-cols-3 gap-3 text-center">
-          <div class="row rounded-xl py-3">
+          <div class="row stat rounded-xl py-3">
             <div class="text-lg font-bold mono text-amber-400" id="gCrypto">--</div>
             <div class="text-[11px] t3 mt-0.5">加密货币</div>
           </div>
-          <div class="row rounded-xl py-3">
+          <div class="row stat rounded-xl py-3">
             <div class="text-lg font-bold mono text-sky-400" id="gUs">--</div>
             <div class="text-[11px] t3 mt-0.5">美股市场</div>
           </div>
-          <div class="row rounded-xl py-3">
+          <div class="row stat rounded-xl py-3">
             <div class="text-lg font-bold mono text-emerald-400" id="gGlobal">--</div>
             <div class="text-[11px] t3 mt-0.5">全球股市</div>
           </div>
@@ -152,7 +195,7 @@
   <section class="grid md:grid-cols-2 xl:grid-cols-3 gap-5" id="markets"></section>
 
   <!-- 纳斯达克人气股横滑区 -->
-  <section id="nasdaqSec" class="mt-6 card border rounded-2xl p-5 hidden">
+  <section id="nasdaqSec" class="rise mt-6 card border rounded-2xl p-5 hidden" style="animation-delay:100ms">
     <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
       <div class="flex items-center gap-2.5">
         <span class="w-9 h-9 rounded-xl flex items-center justify-center bg-sky-500/10 text-sky-400"><i class="fa fa-bolt"></i></span>
@@ -170,7 +213,7 @@
   </section>
 
   <!-- 算法说明 -->
-  <section class="mt-6 card border rounded-2xl p-6">
+  <section class="rise mt-6 card border rounded-2xl p-6" style="animation-delay:140ms">
     <h3 class="font-bold text-sm t1 mb-4 flex items-center gap-2"><i class="fa fa-info-circle text-sky-400"></i> 指数算法说明</h3>
     <div class="grid sm:grid-cols-3 gap-4 text-xs t2 leading-relaxed">
       <div class="row rounded-xl p-4">
@@ -198,48 +241,102 @@
 </div>
 
 <script>
-/* ============ 付费解锁（卖家配置区） ============ */
-/* CODES 里是发给买家的解锁码，值 = 每个码在本设备可使用的次数（默认 5）。
-   卖出时按顺序把码发给买家；卖完需要新码，找卖家添加即可。 */
-const CODES = {
-  "BM-ZLB9":5,"BM-105L":5,"BM-KAJC":5,"BM-PDN5":5,"BM-U0K7":5,"BM-0IJB":5,
-  "BM-T71O":5,"BM-IC1Y":5,"BM-B0LG":5,"BM-ORKU":5,"BM-OTZ9":5,"BM-KPQ3":5,
-};
+/* ============ 付费解锁（加固版） ============
+   解锁码不以明文保存：每个码经「加盐 + 300 轮 SHA-256 + 字节异或反转 + 存储偏移」派生，
+   源码仅存派生值，F12 看不到现成码；验证走 Web Crypto 异步比对。
+   解锁状态分散存 3 个 localStorage 标记，周期自检，篡改即重新上锁。
+   —— 纯前端无法绝对防破解，此加固用于大幅提高逆向破解成本。
+   —— 卖家新增解锁码：用配套脚本 gen-code.js 生成新条目追加进 CODES_HASH。 */
+function _dig(s){ /* SHA-256 → hex */
+  return crypto.subtle.digest('SHA-256', new TextEncoder().encode(s))
+    .then(b => Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2,'0')).join(''));
+}
+async function _fuse(code){ /* 加盐 300 轮迭代：防彩虹表 + 抬高暴力成本 */
+  let d = 'BMBAOMA' + code;
+  for(let i = 0; i < 300; i++) d = await _dig(d + '#WK' + i);
+  let o = '';
+  for(let i = 0; i < d.length; i += 2) o += (parseInt(d.slice(i, i + 2), 16) ^ 0x5A).toString(16).padStart(2,'0');
+  return o.split('').reverse().join('');
+}
+function _seal(h){ /* 存储偏移：hex 每字符 +7，源码中不出现可直接比对的串 */
+  let o = '';
+  for(const c of h) o += ((parseInt(c, 16) + 7) % 16).toString(16);
+  return o;
+}
+/* 12 个解锁码的加密表（值 = _seal(await _fuse(code))，源码不含明文码） */
+const CODES_HASH = [
+  "10fa6faca02934733632bec6f4e61d8e3e872e44db428448a971d7c1ffbff32e",
+  "8e63e38aee41af13f77963e7b9108a4b514571495f88967307ffe45b449d0e5c",
+  "7a514d55e96cc73b6d28ee687b09dd0b73dd210f152448f7fe5602da993d5f69",
+  "e462cca9b4abaaecf9af7fc98cdc585c8c5a1034f543b71f68adbbfbff287d7c",
+  "102c14aa2d41c717ec712cb8a9b1d35235a0c76431e7fcd8b2ef93150a2f74b1",
+  "011e99afd26759a5bb3518bd431d7ffcaff9b56baf654de3df775db4f225cbb6",
+  "607bfcb134f84cf66ecdf8a2db896974fb98a1a1d0bd75237843fe18dc720d62",
+  "75c3fbc070be34e84c4e3ff91fc4df358ab7f04c988ddc3d4cb4eff302190d65",
+  "cf894b76a53a9a083375b777d07e499c65753d132052b08e283ea3eeb21022d7",
+  "e5e1b852e5141d55e01502c0854ed4f1da08c56683bb31775d1bd937feb02e7a",
+  "5f0c119185e86dece842de6653749dcc4d9ee3d7bf2c39c151d7946c1e4b20e6",
+  "c8064b3153d9b3893b2939f86d3014284977ac32efb7baf01263e53e7588b43f",
+];
+const DEVICE_LIMIT = 5; /* 每个解锁码本设备可使用次数 */
+function _legacyOk(){ /* 兼容加固前的解锁标记 bm_ok_*，老客户无需重输 */
+  for(let i = 0; i < localStorage.length; i++){
+    const k = localStorage.key(i);
+    if(k && k.indexOf('bm_ok_') === 0 && localStorage.getItem(k) === '1') return true;
+  }
+  return false;
+}
+async function _stateOk(){ /* 解锁状态三标记一致性自检 */
+  try{
+    const t = localStorage.getItem('bm_t'), y = localStorage.getItem('bm_y'), x = localStorage.getItem('bm_x');
+    if(!t || !y || !x) return false;
+    return (await _fuse(t + '|' + y)) === x;
+  }catch(e){ return false; }
+}
+async function _isUnlocked(){ return _legacyOk() || await _stateOk(); }
+
 const LOCK = {
-  tryUnlock(){
-    const code = String(document.getElementById('lockInput').value||'').trim().toUpperCase();
+  async tryUnlock(){
+    const code = String(document.getElementById('lockInput').value || '').trim().toUpperCase();
     const msg = document.getElementById('lockMsg');
-    if(!(code in CODES)){ msg.textContent='解锁码不正确，请检查后重试'; msg.style.color='#f87171'; return; }
-    const used = +(localStorage.getItem('bm_used_'+code)||0);
-    if(used >= CODES[code]){ msg.textContent='该解锁码本机次数已用完'; msg.style.color='#f87171'; return; }
-    localStorage.setItem('bm_used_'+code, used+1);
-    localStorage.setItem('bm_ok_'+code, '1');
-    LOCK.open(code, CODES[code]-used-1);
+    if(!/^[A-Z0-9-]{6,16}$/.test(code)){ msg.textContent = '解锁码不正确，请检查后重试'; msg.style.color = '#f87171'; return; }
+    const fused = await _fuse(code);
+    const hit = CODES_HASH.indexOf(_seal(fused)) >= 0;
+    if(!hit){ msg.textContent = '解锁码不正确，请检查后重试'; msg.style.color = '#f87171'; return; }
+    const tag = fused.slice(0, 16);
+    const used = +(localStorage.getItem('bm_u_' + tag) || 0);
+    if(used >= DEVICE_LIMIT){ msg.textContent = '该解锁码本机次数已用完'; msg.style.color = '#f87171'; return; }
+    localStorage.setItem('bm_u_' + tag, String(used + 1));
+    const t = (Math.random().toString(36).slice(2) + Date.now().toString(36)).slice(0, 24);
+    localStorage.setItem('bm_t', t);
+    localStorage.setItem('bm_y', fused);
+    localStorage.setItem('bm_x', await _fuse(t + '|' + fused));
+    LOCK.open(code, DEVICE_LIMIT - used - 1);
   },
   open(code, left){
-    document.getElementById('lockLayer').style.display='none';
+    document.getElementById('lockLayer').style.display = 'none';
     if(document.getElementById('unlockBar')) return;
     const bar = document.createElement('div');
-    bar.id='unlockBar';
-    bar.className='fixed top-0 inset-x-0 z-40 text-xs py-1.5 px-3 text-center';
-    bar.style.background='var(--bg)';
-    bar.style.color='var(--text)';
-    bar.style.borderBottom='1px solid var(--card-border)';
-    bar.innerHTML='✅ 已解锁 <b>'+code+'</b> · 本机剩余 <b>'+left+'</b> 次';
+    bar.id = 'unlockBar';
+    bar.className = 'fixed top-0 inset-x-0 z-40 text-xs py-1.5 px-3 text-center';
+    bar.style.background = 'var(--bg)';
+    bar.style.color = 'var(--text)';
+    bar.style.borderBottom = '1px solid var(--card-border)';
+    bar.innerHTML = code
+      ? '✅ 已解锁 <b>' + code + '</b>' + (left != null ? ' · 本机剩余 <b>' + left + '</b> 次' : '')
+      : '✅ 本机已解锁';
     document.body.prepend(bar);
   },
+  relock(){ document.getElementById('lockLayer').style.display = 'flex'; },
 };
-(function initLock(){
-  for(const c in CODES){
-    if(localStorage.getItem('bm_ok_'+c)){
-      LOCK.open(c, Math.max(0, CODES[c] - (+(localStorage.getItem('bm_used_'+c)||0))));
-      return;
-    }
-  }
-  document.getElementById('lockBtn').onclick = ()=>LOCK.tryUnlock();
-  document.getElementById('lockInput').addEventListener('keydown', e=>{ if(e.key==='Enter') LOCK.tryUnlock(); });
+(async function initLock(){
+  if(await _isUnlocked()){ LOCK.open('', null); return; }
+  document.getElementById('lockBtn').onclick = () => LOCK.tryUnlock();
+  document.getElementById('lockInput').addEventListener('keydown', e => { if(e.key === 'Enter') LOCK.tryUnlock(); });
   document.getElementById('lockInput').focus();
 })();
+/* 周期自检：解锁标记若被篡改/丢失则重新上锁 */
+setInterval(async () => { if(!(await _isUnlocked())) LOCK.relock(); }, 300000);
 
 /* ============ 资产清单 ============ */
 const MARKETS = [
@@ -272,7 +369,8 @@ const NASDAQ_TOP = [
   ['usAAPL','苹果'],['usNVDA','英伟达'],['usMSFT','微软'],['usGOOGL','谷歌'],
   ['usAMZN','亚马逊'],['usTSLA','特斯拉'],['usMETA','Meta'],['usAMD','超威半导体'],
   ['usINTC','英特尔'],['usNFLX','奈飞'],['usAVGO','博通'],['usQCOM','高通'],
-  ['usMU','美光'],['usORCL','甲骨文'],['usADBE','Adobe'],['usCSCO','思科'],
+  ['usMU','美光科技'],['usSNDK','闪迪'],['usWDC','西部数据'],['usSTX','希捷科技'],
+  ['usORCL','甲骨文'],['usADBE','Adobe'],['usCSCO','思科'],
   ['usCOST','开市客'],['usPEP','百事'],['usTMUS','T-Mobile'],['usLULU','Lululemon'],
   ['usABNB','爱彼迎'],['usSHOP','Shopify'],['usPLTR','Palantir'],['usCOIN','Coinbase'],
   ['usSNOW','Snowflake'],['usMSTR','MicroStrategy'],['usASML','阿斯麦'],['usADI','亚德诺'],
@@ -547,7 +645,7 @@ function renderStock(d, code){
           </div>
         </div>
         <div class="text-center">
-          <div class="text-3xl font-black mono" style="color:${lv.color}">${h}</div>
+          <div class="text-3xl font-black mono glow-num" style="color:${lv.color}">${h}</div>
           <div class="text-[11px] t3 mt-0.5">${lv.name}</div>
         </div>
       </div>
@@ -732,7 +830,7 @@ function renderNasdaq(){
         <span class="mono text-[11px] font-semibold" style="color:${colorOf(d.chg)}">${fmtPct(d.chg)}</span>
       </div>
       <div class="mt-2 flex items-center gap-2">
-        <div class="w-8 h-8 rounded-full shrink-0 relative" style="background:${grad}">
+        <div class="mini-ring w-8 h-8 rounded-full shrink-0 relative" style="background:${grad};color:${lv.color}">
           <div class="absolute inset-[3px] rounded-full flex items-center justify-center" style="background:var(--card);color:${lv.color}">
             <span class="mono text-[9px] font-black">${h}</span>
           </div>
