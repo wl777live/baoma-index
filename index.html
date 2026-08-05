@@ -235,8 +235,12 @@ function parseTencent(text){
     const isA = /^(sh|sz)\d{6}$/i.test(code);
     out[code] = {
       name: f[1], price: parseFloat(f[3]), chg: parseFloat(f[32]),
-      hi52: isA ? 0 : (parseFloat(f[48])||0),
-      lo52: isA ? 0 : (parseFloat(f[49])||0),
+      // A股 52周高/低在 f47/f48；美股在 f48/f49
+      hi52: parseFloat(f[isA?47:48])||0,
+      lo52: parseFloat(f[isA?48:49])||0,
+      open: parseFloat(f[5])||0,
+      hi: parseFloat(f[33])||0,
+      lo: parseFloat(f[34])||0,
       turnover: isA ? (parseFloat(f[38])||0) : null,
       ts: f[30],
     };
@@ -254,7 +258,7 @@ async function loadCN(){
   for(const a of us.assets){
     const d = q[a.code];
     if(!d || !isFinite(d.price)) continue;
-    store[a.code] = { price:d.price, chg:d.chg, hi:d.hi52, lo:d.lo52, ts:d.ts, period:'52w' };
+    store[a.code] = { price:d.price, chg:d.chg, hi52:d.hi52, lo52:d.lo52, open:d.open, hi:d.hi, lo:d.lo, ts:d.ts, period:'52w' };
     codeOK.add(a.code);
   }
 }
@@ -321,20 +325,53 @@ function connectGateWS(){
 }
 
 /* ============ 评分 ============ */
+/* 斐波那契位置分：现价在 [lo,hi] 波段内的回撤位置 -> 0-100
+   以 61.8% 回撤位为强弱分界：站上=趋势强/热，跌破=弱/冷 */
+function fibPos(price, lo, hi){
+  if(!(hi>lo && hi>0 && lo>=0)) return 50;
+  const pct = clamp((price-lo)/(hi-lo)*100, 0, 100);
+  const fibs = [100, 78.2, 61.8, 50, 38.2, 23.6, 0];
+  const vals = [95, 85, 72, 58, 42, 28, 10];
+  for(let i=0;i<fibs.length-1;i++){
+    if(pct >= fibs[i+1]){
+      const t = (pct-fibs[i+1])/(fibs[i]-fibs[i+1]);
+      return vals[i+1] + (vals[i]-vals[i+1])*t;
+    }
+  }
+  return 10;
+}
+/* K线结构分：当日实体/影线结构 -> 0-100
+   光头大阳=高，大阴线=低；长下影(买盘承接)加分、长上影(抛压)减分 */
+function klineScore(price, open, hi, lo){
+  if(!(isFinite(price) && isFinite(hi) && isFinite(lo) && hi>lo)) return 50;
+  if(!isFinite(open) || open<=0) return 50;
+  const rng = hi-lo;
+  const body = Math.abs(price-open);
+  const upper = Math.max(hi, open, price) - Math.max(open, price);
+  const lower = Math.min(open, price) - Math.min(lo, open, price);
+  const bodyR = clamp(body/rng, 0, 1);
+  const isBull = price >= open;
+  let s = 50;
+  s += (isBull?1:-1) * (22 + bodyR*23);
+  s += clamp((lower-upper)/rng*22, -22, 22);
+  return clamp(s, 0, 100);
+}
 function heatScore(d){
   const chg = isFinite(d.chg)?d.chg:0;
   const mom = clamp(50 + chg*10, 0, 100);
-  let pos=50;
-  if(d.hi>d.lo && d.hi>0) pos = clamp((d.price-d.lo)/(d.hi-d.lo)*100, 0, 100);
+  let pos;
+  if(d.hi52>d.lo52 && d.lo52>0) pos = fibPos(d.price, d.lo52, d.hi52);
+  else pos = fibPos(d.price, d.lo, d.hi);
+  const ks = klineScore(d.price, d.open, d.hi, d.lo);
   let score;
   if(d.period==='52w'){
-    score = Math.round(pos*0.65 + mom*0.35);
+    // 中长线：52周斐波那契波段为主，K线结构为辅
+    score = pos*0.45 + ks*0.25 + mom*0.30;
   }else{
-    // 当日/24h 区间：位置分位仅在明显涨幅时放大，避免平淡行情误报过热
-    const wp = clamp(Math.abs(chg)/2, 0, 0.4);
-    score = Math.round(pos*wp + mom*(1-wp));
+    // 当日/24h：短线情绪为主，K线结构权重更高
+    score = pos*0.30 + ks*0.35 + mom*0.35;
   }
-  return { score, pos, mom };
+  return { score: Math.round(score), pos: Math.round(pos), mom: Math.round(mom), ks: Math.round(ks) };
 }
 
 /* ============ 个股热度查询 ============ */
@@ -361,16 +398,41 @@ function toTcCode(input){
 function stockHeat(d, isA){
   const chg = isFinite(d.chg)?d.chg:0;
   const mom = clamp(50 + chg*8, 0, 100);
-  let pos = 50;
-  if(d.hi52>d.lo52 && d.hi52>0) pos = clamp((d.price-d.lo52)/(d.hi52-d.lo52)*100, 0, 100);
+  let pos;
+  if(d.hi52>d.lo52 && d.lo52>0) pos = fibPos(d.price, d.lo52, d.hi52);
+  else pos = fibPos(d.price, d.lo, d.hi);
+  const ks = klineScore(d.price, d.open, d.hi, d.lo);
   let score;
   if(isA){
     const turn = isFinite(d.turnover)?d.turnover:0;
-    score = Math.round(mom*0.62 + pos*0.2 + clamp(turn*4, 0, 18));
+    score = pos*0.36 + ks*0.18 + mom*0.28 + clamp(turn*4, 0, 18);
   }else{
-    score = Math.round(mom*0.65 + pos*0.35);
+    score = pos*0.45 + ks*0.25 + mom*0.30;
   }
-  return clamp(score, 0, 100);
+  return clamp(Math.round(score), 0, 100);
+}
+/* 个股：斐波那契关键位一览（61.8/50/38.2 回撤位 + 现价位置） */
+function fibLevelsHtml(d){
+  if(!(d.hi52>d.lo52 && d.lo52>0)) return '';
+  const L=d.lo52, H=d.hi52, p=d.price;
+  const pct = clamp((p-L)/(H-L)*100, 0, 100);
+  const cells = [
+    ['61.8%', H-(H-L)*0.618],
+    ['50.0%', H-(H-L)*0.5],
+    ['38.2%', H-(H-L)*0.382],
+  ].map(([nm,v])=>{
+    const above = p>=v;
+    return `<div><div class="text-[9px] ${above?'text-slate-400':'text-slate-600'}">${nm} ${above?'▲':'▼'}</div>
+      <div class="mono text-[11px] ${above?'text-slate-300':'text-slate-500'}">${fmt(v)}</div></div>`;
+  }).join('');
+  const pctC = pct>=61.8?'text-rose-400':pct>=38.2?'text-amber-300':'text-emerald-400';
+  return `<div class="mt-3 pt-3 border-t border-slate-700/50">
+    <div class="text-[10px] text-slate-500 mb-1.5">斐波那契 · 52周波段</div>
+    <div class="grid grid-cols-4 gap-1 text-center">
+      ${cells}
+      <div><div class="text-[9px] text-slate-400">现价位置</div><div class="mono text-[11px] font-bold ${pctC}">${pct.toFixed(0)}%</div></div>
+    </div>
+  </div>`;
 }
 function renderStock(d, code){
   const isA = /^(sh|sz)\d{6}$/i.test(code);
@@ -401,6 +463,7 @@ function renderStock(d, code){
         <div class="bar h-full rounded-full" style="width:${h}%;background:${lv.color}"></div>
       </div>
       <p class="mt-3 text-xs text-slate-400 leading-relaxed">${lv.emoji} ${lv.tip}</p>
+      ${fibLevelsHtml(d)}
       <p class="mt-2 text-[10px] text-slate-600">⚠️ 娱乐参考，不构成任何投资建议 · 数据 ${d.ts||''}</p>
     </div>`;
 }
